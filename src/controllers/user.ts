@@ -2,6 +2,7 @@ import { Context } from 'koa'
 import bcrypt from 'bcryptjs'
 import pool from '../config/db'
 import { signToken } from '../utils/jwt'
+import { Result, ResultCode } from '../utils/result'
 
 // Helper to generate a random 10-digit numeric UID
 const generateUID = () => {
@@ -12,8 +13,7 @@ export const register = async (ctx: Context) => {
   const { username, password } = ctx.request.body as any
 
   if (!username || !password) {
-    ctx.status = 400
-    ctx.body = { message: 'Username and password are required' }
+    ctx.body = Result.error(ResultCode.BAD_REQUEST, 'Username and password are required')
     return
   }
 
@@ -26,17 +26,11 @@ export const register = async (ctx: Context) => {
       [uid, username, hashedPassword]
     )
 
-    ctx.body = {
-      status: 'success',
-      message: 'User registered successfully',
-      data: { uid, username }
-    }
+    ctx.body = Result.success({ uid, username }, 'User registered successfully')
   } catch (error: any) {
-    ctx.status = error.code === 'ER_DUP_ENTRY' ? 409 : 500
-    ctx.body = {
-      message: error.code === 'ER_DUP_ENTRY' ? 'Username already exists' : 'Registration failed',
-      error: error.message
-    }
+    const code = error.code === 'ER_DUP_ENTRY' ? ResultCode.CONFLICT : ResultCode.INTERNAL_ERROR
+    const message = error.code === 'ER_DUP_ENTRY' ? 'Username already exists' : 'Registration failed'
+    ctx.body = Result.error(code, message, error.message)
   }
 }
 
@@ -48,30 +42,21 @@ export const login = async (ctx: Context) => {
     const user = rows[0]
 
     if (!user || !(await bcrypt.compare(password, user.password))) {
-      ctx.status = 401
-      ctx.body = { message: 'Invalid username or password' }
+      ctx.body = Result.error(ResultCode.UNAUTHORIZED, 'Invalid username or password')
       return
     }
 
     const token = signToken({ uid: user.uid, username: user.username })
 
-    ctx.body = {
-      status: 'success',
-      message: 'Login successful',
-      data: {
-        token,
-        user: { uid: user.uid, username: user.username }
-      }
-    }
+    ctx.body = Result.success({
+      token,
+      user: { uid: user.uid, username: user.username }
+    }, 'Login successful')
   } catch (error: any) {
-    ctx.status = 500
-    ctx.body = { message: 'Login failed', error: error.message }
+    ctx.body = Result.error(ResultCode.INTERNAL_ERROR, 'Login failed', error.message)
   }
 }
 
 export const getProfile = async (ctx: Context) => {
-  ctx.body = {
-    status: 'success',
-    data: { user: ctx.state.user }
-  }
+  ctx.body = Result.success({ user: ctx.state.user })
 }
