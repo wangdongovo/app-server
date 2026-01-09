@@ -3,6 +3,8 @@ import Router from 'koa-router'
 import bodyParser from 'koa-bodyparser'
 import dotenv from 'dotenv'
 import pool from './config/db'
+import { register, login, getProfile } from './controllers/user'
+import { authMiddleware } from './middleware/auth'
 
 dotenv.config()
 
@@ -39,6 +41,13 @@ router.get('/db-check', async ctx => {
     }
   }
 })
+
+// Auth routes
+router.post('/register', register)
+router.post('/login', login)
+
+// Protected routes
+router.get('/profile', authMiddleware, getProfile)
 
 app.use(router.routes()).use(router.allowedMethods())
 
