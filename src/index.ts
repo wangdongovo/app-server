@@ -2,6 +2,7 @@ import Koa from 'koa'
 import bodyParser from 'koa-bodyparser'
 import dotenv from 'dotenv'
 import router from './routes'
+import { initScheduler } from './utils/scheduler'
 
 dotenv.config()
 
@@ -11,6 +12,9 @@ app.use(bodyParser())
 
 // Register the centralized router
 app.use(router.routes()).use(router.allowedMethods())
+
+// Initialize the gift delivery scheduler
+initScheduler()
 
 const PORT = process.env.PORT || 3000
 
